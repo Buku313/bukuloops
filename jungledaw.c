@@ -5001,6 +5001,14 @@ static void main_loop_body(void *arg) {
                 else if (k == SDLK_RSHIFT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_BACK; SDL_PushEvent(&fe); }
                 else if (k == SDLK_a) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_LEFTSHOULDER; SDL_PushEvent(&fe); }
                 else if (k == SDLK_s) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER; SDL_PushEvent(&fe); }
+                else if (k == SDLK_d) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_LEFTSTICK; SDL_PushEvent(&fe); }
+                else if (k == SDLK_f) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_RIGHTSTICK; SDL_PushEvent(&fe); }
+                else if (k >= SDLK_1 && k <= SDLK_8 && app.page == PAGE_STEP && app.pattern_count > 0) {
+                    int ti = (int)(k - SDLK_1);
+                    if (ti < app.patterns[app.step_pat].track_count) app.step_track = ti;
+                }
+                else if (k == SDLK_LSHIFT) select_held = 1;
+                else if (k == SDLK_LCTRL) start_held = 1;
             }
             else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
                 SDL_GameControllerButton b = (SDL_GameControllerButton)e.cbutton.button;
@@ -5109,10 +5117,117 @@ static void main_loop_body(void *arg) {
                     default: break;
                 }
             }
+            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                int mx = e.button.x, my = e.button.y;
+                /* Tab bar clicks */
+                if (my >= 6 && my <= 32) {
+                    int tab_pages[] = {PAGE_STEP, PAGE_PERFORM, PAGE_FX};
+                    int tabw = 56, gap = 4;
+                    int total_tw = 3 * tabw + 2 * gap;
+                    int tx0 = (W - total_tw) / 2;
+                    for (int ti = 0; ti < 3; ti++) {
+                        int tx = tx0 + ti * (tabw + gap);
+                        if (mx >= tx && mx < tx + tabw) { app.page = (Page)tab_pages[ti]; break; }
+                    }
+                }
+                /* Step page: click on grid or labels */
+                if (app.page == PAGE_STEP && app.pattern_count > 0 && my >= 46 && my < H - 28) {
+                    Pattern *mp = &app.patterns[app.step_pat];
+                    int m_label_w = 110, m_margin = 6;
+                    int m_grid_x = m_margin + m_label_w;
+                    int m_grid_w = W - m_margin - m_grid_x;
+                    int m_plen = mp->length > 0 ? mp->length : 16;
+                    int m_vis = m_plen > 16 ? 16 : m_plen;
+                    int m_cellw = m_grid_w / m_vis;
+                    int m_body_h = H - 28 - 46;
+                    int m_max_rows = 8;
+                    int m_row_h = m_body_h / m_max_rows;
+                    if (m_row_h > 44) m_row_h = 44;
+                    int m_tc = mp->track_count;
+                    int m_row = (my - 46) / m_row_h;
+                    int m_scroll = 0;
+                    if (app.step_track >= (m_tc < m_max_rows ? m_tc : m_max_rows))
+                        m_scroll = app.step_track - (m_tc < m_max_rows ? m_tc : m_max_rows) + 1;
+                    if (m_scroll < 0) m_scroll = 0;
+                    int m_track = m_row + m_scroll;
+                    if (m_track >= 0 && m_track < m_tc) {
+                        app.step_track = m_track;
+                        if (mx < m_grid_x) {
+                            app.step_col = -1;
+                        } else {
+                            int m_col = (mx - m_grid_x) / m_cellw + app.step_scroll_x;
+                            if (m_col >= 0 && m_col < m_plen) {
+                                app.step_col = m_col;
+                                Track *mt = &mp->tracks[m_track];
+                                mt->steps[m_col] = mt->steps[m_col] > 0 ? 0 : 1;
+                            }
+                        }
+                    }
+                }
+                /* Play/stop button */
+                if (mx >= W - 90 && mx <= W - 10 && my >= 8 && my <= 32) {
+                    app.playing = !app.playing;
+                }
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_RIGHT) {
+                int mx = e.button.x, my = e.button.y;
+                /* Right click on step = accent */
+                if (app.page == PAGE_STEP && app.pattern_count > 0 && my >= 46 && my < H - 28) {
+                    Pattern *mp = &app.patterns[app.step_pat];
+                    int m_grid_x = 6 + 110;
+                    int m_grid_w = W - 6 - m_grid_x;
+                    int m_plen = mp->length > 0 ? mp->length : 16;
+                    int m_vis = m_plen > 16 ? 16 : m_plen;
+                    int m_cellw = m_grid_w / m_vis;
+                    int m_row_h = (H - 28 - 46) / 8;
+                    if (m_row_h > 44) m_row_h = 44;
+                    int m_row = (my - 46) / m_row_h;
+                    int m_scroll = 0;
+                    int m_tc = mp->track_count;
+                    if (app.step_track >= (m_tc < 8 ? m_tc : 8))
+                        m_scroll = app.step_track - (m_tc < 8 ? m_tc : 8) + 1;
+                    int m_track = m_row + m_scroll;
+                    if (m_track >= 0 && m_track < m_tc && mx >= m_grid_x) {
+                        int m_col = (mx - m_grid_x) / m_cellw + app.step_scroll_x;
+                        if (m_col >= 0 && m_col < m_plen) {
+                            app.step_track = m_track;
+                            app.step_col = m_col;
+                            Track *mt = &mp->tracks[m_track];
+                            if (mt->steps[m_col] == 2) mt->steps[m_col] = 1;
+                            else mt->steps[m_col] = 2;
+                        }
+                    }
+                }
+            }
+            else if (e.type == SDL_MOUSEWHEEL) {
+                if (app.page == PAGE_STEP) {
+                    if (e.wheel.x != 0) {
+                        Pattern *wp = app.pattern_count > 0 ? &app.patterns[app.step_pat] : NULL;
+                        int wplen = wp ? (wp->length > 0 ? wp->length : 16) : 16;
+                        app.step_scroll_x -= e.wheel.x;
+                        if (app.step_scroll_x < 0) app.step_scroll_x = 0;
+                        if (app.step_scroll_x > wplen - 16) app.step_scroll_x = wplen - 16;
+                        if (app.step_scroll_x < 0) app.step_scroll_x = 0;
+                    }
+                    if (e.wheel.y != 0) {
+                        if (app.pattern_count > 0) {
+                            Pattern *wp = &app.patterns[app.step_pat];
+                            int tc = wp->track_count;
+                            if (tc > 0) {
+                                app.step_track -= e.wheel.y;
+                                if (app.step_track < 0) app.step_track = 0;
+                                if (app.step_track >= tc) app.step_track = tc - 1;
+                            }
+                        }
+                    }
+                }
+            }
             else if (e.type == SDL_KEYUP) {
                 SDL_Keycode ku = e.key.keysym.sym;
                 if (ku == SDLK_RSHIFT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONUP; fe.cbutton.button = SDL_CONTROLLER_BUTTON_BACK; SDL_PushEvent(&fe); }
                 else if (ku == SDLK_RETURN) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONUP; fe.cbutton.button = SDL_CONTROLLER_BUTTON_START; SDL_PushEvent(&fe); }
+                else if (ku == SDLK_LSHIFT) select_held = 0;
+                else if (ku == SDLK_LCTRL) start_held = 0;
             }
             else if (e.type == SDL_CONTROLLERBUTTONUP) {
                 if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) select_held = 0;
