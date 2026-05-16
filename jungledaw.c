@@ -303,6 +303,10 @@ typedef struct {
 static App app;
 static int select_held = 0;
 static int start_held = 0;
+static int g_run = 1;
+static int g_last_axis_l = 0, g_last_axis_r = 0;
+static int g_last_rstick_y = 0, g_last_lstick_x = 0, g_last_rstick_x = 0;
+static Uint32 g_last_pause_tick = 0;
 
 static SDL_Color C_BG     = {  0,   6,   2, 255};
 static SDL_Color C_PANEL  = {  6,  18,   9, 255};
@@ -4963,12 +4967,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    static int run = 1;
-    static int last_axis_l = 0, last_axis_r = 0;
-    static int last_rstick_y = 0;
-    static int last_lstick_x = 0;
-    static int last_rstick_x = 0;
-    static Uint32 last_pause_tick = 0;
+    g_run = 1;
 
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg((em_arg_callback_func)main_loop_body, r, 0, 1);
@@ -4976,19 +4975,16 @@ int main(int argc, char **argv) {
 }
 static void main_loop_body(void *arg) {
     SDL_Renderer *r = (SDL_Renderer *)arg;
-    static int last_axis_l = 0, last_axis_r = 0;
-    static int last_rstick_y = 0, last_lstick_x = 0, last_rstick_x = 0;
-    static Uint32 last_pause_tick = 0;
     {
 #else
-    while (run) {
+    while (g_run) {
 #endif
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) run = 0;
+            if (e.type == SDL_QUIT) g_run = 0;
             else if (e.type == SDL_KEYDOWN) {
                 SDL_Keycode k = e.key.keysym.sym;
-                if (k == SDLK_ESCAPE) { run = 0; }
+                if (k == SDLK_ESCAPE) { g_run = 0; }
                 else if (k == SDLK_SPACE) app.playing = !app.playing;
                 else if (k == SDLK_q) next_page(-1);
                 else if (k == SDLK_e) next_page(1);
@@ -5011,7 +5007,7 @@ static void main_loop_body(void *arg) {
                 if (b == SDL_CONTROLLER_BUTTON_BACK) select_held = 1;
                 if (b == SDL_CONTROLLER_BUTTON_START) start_held = 1;
                 if ((b == SDL_CONTROLLER_BUTTON_START && select_held) ||
-                    (b == SDL_CONTROLLER_BUTTON_BACK && start_held)) { run = 0; continue; }
+                    (b == SDL_CONTROLLER_BUTTON_BACK && start_held)) { g_run = 0; continue; }
                 if (b == SDL_CONTROLLER_BUTTON_B && start_held) {
                     if (app.file_open) {
                         app.file_open = 0;
@@ -5046,12 +5042,12 @@ static void main_loop_body(void *arg) {
                 }
                 if (b == SDL_CONTROLLER_BUTTON_START) {
                     Uint32 now = SDL_GetTicks();
-                    if (!app.playing && last_pause_tick && now - last_pause_tick < 550) {
+                    if (!app.playing && g_last_pause_tick && now - g_last_pause_tick < 550) {
                         stop_and_rewind();
-                        last_pause_tick = 0;
+                        g_last_pause_tick = 0;
                     } else if (app.playing) {
                         app.playing = 0;
-                        last_pause_tick = now;
+                        g_last_pause_tick = now;
                     } else {
                         app.playing = 1;
                     }
@@ -5127,17 +5123,17 @@ static void main_loop_body(void *arg) {
                 int threshold = 18000;
                 if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
                     int now = v > threshold ? 1 : 0;
-                    if (now && !last_axis_l) on_axis_l2r2(-1);
-                    last_axis_l = now;
+                    if (now && !g_last_axis_l) on_axis_l2r2(-1);
+                    g_last_axis_l = now;
                 } else if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
                     int now = v > threshold ? 1 : 0;
-                    if (now && !last_axis_r) on_axis_l2r2(1);
-                    last_axis_r = now;
+                    if (now && !g_last_axis_r) on_axis_l2r2(1);
+                    g_last_axis_r = now;
                 }
                 /* Right stick Y-axis: adjust step probability (debounced — one nudge per deflection) */
                 if (e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY && app.page == PAGE_STEP) {
                     int now_y = (v > threshold) ? 1 : (v < -threshold) ? -1 : 0;
-                    if (now_y != 0 && now_y != last_rstick_y) {
+                    if (now_y != 0 && now_y != g_last_rstick_y) {
                         Track *rst = cur_track();
                         if (rst) {
                             Pattern *rpat = &app.patterns[app.step_pat];
@@ -5151,7 +5147,7 @@ static void main_loop_body(void *arg) {
                             }
                         }
                     }
-                    last_rstick_y = now_y;
+                    g_last_rstick_y = now_y;
                 }
                 /* Right stick X-axis: scroll step grid horizontally */
                 if (e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX && app.page == PAGE_STEP) {
@@ -5169,7 +5165,7 @@ static void main_loop_body(void *arg) {
                 /* Left stick X-axis: select chop slice on current step */
                 if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX && app.page == PAGE_STEP) {
                     int now_x = (v > threshold) ? 1 : (v < -threshold) ? -1 : 0;
-                    if (now_x != 0 && now_x != last_lstick_x) {
+                    if (now_x != 0 && now_x != g_last_lstick_x) {
                         Track *lst = cur_track();
                         if (lst && lst->slices > 0 && lst->sample_ref >= 0) {
                             int col = app.step_col < 0 ? 0 : app.step_col;
@@ -5185,7 +5181,7 @@ static void main_loop_body(void *arg) {
                             }
                         }
                     }
-                    last_lstick_x = now_x;
+                    g_last_lstick_x = now_x;
                 }
             }
         }
