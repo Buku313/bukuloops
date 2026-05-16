@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BukuLoops — Browser Groovebox</title>
+<meta name="description" content="Make beats in your browser. Step sequencer, sample chopper, synth engines, FX mixer. Free, no install.">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #121214; color: #ccc; font-family: -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+#wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+canvas { image-rendering: pixelated; border: 2px solid #333; max-width: 100vw; max-height: 80vh; }
+#controls { margin-top: 12px; font-size: 13px; color: #666; text-align: center; line-height: 1.6; }
+kbd { background: #222; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; font-size: 12px; color: #aaa; }
+#drop-zone { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; background: rgba(0,0,0,0.85); z-index: 999; align-items: center; justify-content: center; }
+#drop-zone.active { display: flex; }
+#drop-zone p { color: #7f7; font-size: 24px; }
+#loading { font-size: 18px; color: #888; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="loading">Loading BukuLoops...</div>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div id="controls">
+    <kbd>Arrows</kbd> DPAD &nbsp;
+    <kbd>Z</kbd> A &nbsp;
+    <kbd>X</kbd> B &nbsp;
+    <kbd>C</kbd> X &nbsp;
+    <kbd>V</kbd> Y &nbsp;
+    <kbd>A</kbd><kbd>S</kbd> L1/R1 &nbsp;
+    <kbd>Space</kbd> Play &nbsp;
+    <kbd>Enter</kbd> Start &nbsp;
+    <kbd>RShift</kbd> Select
+    <br>Drag WAV files onto the window to load samples. Gamepad supported.
+  </div>
+</div>
+<div id="drop-zone"><p>Drop WAV files here</p></div>
+<script>
+var Module = {
+  canvas: document.getElementById('canvas'),
+  onRuntimeInitialized: function() {
+    document.getElementById('loading').style.display = 'none';
+  }
+};
+// Drag and drop WAV loading
+var dz = document.getElementById('drop-zone');
+document.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('active'); });
+document.addEventListener('dragleave', function(e) { if (e.target === dz) dz.classList.remove('active'); });
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dz.classList.remove('active');
+  for (var i = 0; i < e.dataTransfer.files.length; i++) {
+    var f = e.dataTransfer.files[i];
+    if (!f.name.match(/\.wav$/i)) continue;
+    var reader = new FileReader();
+    reader.onload = (function(name) { return function(ev) {
+      var data = new Uint8Array(ev.target.result);
+      var path = '/samples/drops/' + name;
+      try { FS.mkdirTree('/samples/drops'); } catch(e) {}
+      FS.writeFile(path, data);
+      console.log('Loaded: ' + path);
+    };})(f.name);
+    reader.readAsArrayBuffer(f);
+  }
+});
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

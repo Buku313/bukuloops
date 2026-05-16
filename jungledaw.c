@@ -6,6 +6,9 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #define W 640
 #define H 480
@@ -352,6 +355,9 @@ static void toggle_layer_active(int layer_idx);
 static Track *cur_track(void);
 static SDL_Color bus_color(int bi);
 extern const char *SESSION_PATH;
+#ifdef __EMSCRIPTEN__
+static void main_loop_body(void *arg);
+#endif
 
 static const char *BUS_NAMES[] = {"A","B","C"};
 #define THEME_COUNT 4
@@ -3116,10 +3122,12 @@ static void handle_settings_input(SDL_GameControllerButton b) {
         apply_theme(app.theme);
     } else if (app.settings_focus == 6) {
         app.speaker_mute = !app.speaker_mute;
+        #ifndef __EMSCRIPTEN__
         if (app.speaker_mute)
             system("amixer -c 0 sset 'Playback Path' 'HP' >/dev/null 2>&1");
         else
             system("amixer -c 0 sset 'Playback Path' 'SPK_HP' >/dev/null 2>&1");
+        #endif
     } else if (app.settings_focus == 7) {
         if (b == SDL_CONTROLLER_BUTTON_A) {
             if (save_session(SESSION_PATH)) g_save_flash = 60;
@@ -4955,23 +4963,48 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    int run = 1;
-    int last_axis_l = 0, last_axis_r = 0;
-    int last_rstick_y = 0;
-    int last_lstick_x = 0;
-    int last_rstick_x = 0;
-    Uint32 last_pause_tick = 0;
+    static int run = 1;
+    static int last_axis_l = 0, last_axis_r = 0;
+    static int last_rstick_y = 0;
+    static int last_lstick_x = 0;
+    static int last_rstick_x = 0;
+    static Uint32 last_pause_tick = 0;
+
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop_arg((em_arg_callback_func)main_loop_body, r, 0, 1);
+    return 0;
+}
+static void main_loop_body(void *arg) {
+    SDL_Renderer *r = (SDL_Renderer *)arg;
+    static int last_axis_l = 0, last_axis_r = 0;
+    static int last_rstick_y = 0, last_lstick_x = 0, last_rstick_x = 0;
+    static Uint32 last_pause_tick = 0;
+    {
+#else
     while (run) {
+#endif
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) run = 0;
             else if (e.type == SDL_KEYDOWN) {
                 SDL_Keycode k = e.key.keysym.sym;
-                if (k == SDLK_ESCAPE) run = 0;
+                if (k == SDLK_ESCAPE) { run = 0; }
                 else if (k == SDLK_SPACE) app.playing = !app.playing;
                 else if (k == SDLK_q) next_page(-1);
                 else if (k == SDLK_e) next_page(1);
                 else if (k == SDLK_TAB) next_page(1);
+                else if (k == SDLK_z) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_A; SDL_PushEvent(&fe); }
+                else if (k == SDLK_x) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_B; SDL_PushEvent(&fe); }
+                else if (k == SDLK_c) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_X; SDL_PushEvent(&fe); }
+                else if (k == SDLK_v) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_Y; SDL_PushEvent(&fe); }
+                else if (k == SDLK_UP) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_DPAD_UP; SDL_PushEvent(&fe); }
+                else if (k == SDLK_DOWN) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_DPAD_DOWN; SDL_PushEvent(&fe); }
+                else if (k == SDLK_LEFT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_DPAD_LEFT; SDL_PushEvent(&fe); }
+                else if (k == SDLK_RIGHT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_DPAD_RIGHT; SDL_PushEvent(&fe); }
+                else if (k == SDLK_RETURN) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_START; SDL_PushEvent(&fe); }
+                else if (k == SDLK_RSHIFT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_BACK; SDL_PushEvent(&fe); }
+                else if (k == SDLK_a) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_LEFTSHOULDER; SDL_PushEvent(&fe); }
+                else if (k == SDLK_s) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONDOWN; fe.cbutton.button = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER; SDL_PushEvent(&fe); }
             }
             else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
                 SDL_GameControllerButton b = (SDL_GameControllerButton)e.cbutton.button;
@@ -5080,6 +5113,11 @@ int main(int argc, char **argv) {
                     default: break;
                 }
             }
+            else if (e.type == SDL_KEYUP) {
+                SDL_Keycode ku = e.key.keysym.sym;
+                if (ku == SDLK_RSHIFT) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONUP; fe.cbutton.button = SDL_CONTROLLER_BUTTON_BACK; SDL_PushEvent(&fe); }
+                else if (ku == SDLK_RETURN) { SDL_Event fe; fe.type = SDL_CONTROLLERBUTTONUP; fe.cbutton.button = SDL_CONTROLLER_BUTTON_START; SDL_PushEvent(&fe); }
+            }
             else if (e.type == SDL_CONTROLLERBUTTONUP) {
                 if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) select_held = 0;
                 if (e.cbutton.button == SDL_CONTROLLER_BUTTON_START) start_held = 0;
@@ -5153,6 +5191,7 @@ int main(int argc, char **argv) {
         }
         render(r);
         SDL_RenderPresent(r);
+#ifndef __EMSCRIPTEN__
         SDL_Delay(16);
     }
 
@@ -5164,4 +5203,7 @@ int main(int argc, char **argv) {
     SDL_DestroyWindow(win);
     SDL_Quit();
     return 0;
+#else
+    }
+#endif
 }
