@@ -1,0 +1,5 @@
+bukuloops
+*.o
+*.bukuloop
+samples/
+.DS_Store
