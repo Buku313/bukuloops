@@ -1,161 +1,156 @@
 # BukuLoops
 
-A portable groovebox and beat station for the R36S retro handheld (RK3326 / dArkOSRE). Single-file C, SDL2, runs at 48kHz mono. Built for gamepad-only workflow.
+Portable groovebox and beat station. Runs native on Linux handhelds (R36S, RG35XX, Miyoo) and desktop. Single-file C with SDL2 — compiles anywhere SDL2 runs. Emscripten web build coming soon.
+
+<!--
+![Step Sequencer](screenshots/step-page.png)
+![FX Mixer](screenshots/fx-detail.png)
+![Sample Browser](screenshots/browser.png)
+![Perform Mode](screenshots/perform.png)
+-->
+
+## What It Does
+
+BukuLoops is a self-contained beat-making environment designed for small screens and gamepad input. Load samples, sequence beats across multiple tracks, route through a 3-bus mixer with 7 effects per bus, chain patterns into arrangements, and perform live. Everything saves to portable session files.
 
 ## Features
 
-### Step Sequencer
-- 16/32/64 step patterns with up to 8 tracks per pattern
-- PO-33 style workflow: one pattern = full groove, all tracks play simultaneously
-- 3D raised-button step grid with per-track color coding
-- Per-step note randomization (up / up+down / down) with scale-aware pitch selection
-- Per-step probability (0-100%)
-- Accent = roll (double trigger at half-step intervals)
-- Horizontal scrolling for extended patterns with smooth camera follow
+### Sequencer
+- 16/32/64 step patterns, 8 tracks per pattern, 16 patterns
+- Multi-track playback — one pattern contains the full groove
+- 3D step buttons with per-track color coding (8-color palette)
+- Per-step probability, per-step pitch, per-step note randomization
+- Accent steps trigger rolls (double hit at half-step)
+- Horizontal scroll for extended sequences
 
-### Sample Engine
-- WAV sample loading with automatic folder categorization
-- Two-panel icon grid browser (folders left, tile grid right)
-- Sample pitch shifting (chromatic, per-step)
-- Chop/slice system: 4/8/16/32 slices with waveform visualizer
-- Three chop modes: CUT (stop at boundary), THRU (play to end), LOOP (repeat slice)
-- Left stick scrubs through slices with live preview
-- Track self-cut (each track kills its previous voice on retrigger)
+### Samples & Chopping
+- Load WAV files from folders — auto-categorized in a tile-grid browser
+- Chop any sample into 4/8/16/32 slices
+- Three chop modes: **CUT** (tight), **THRU** (play to end), **LOOP** (sustain)
+- Waveform visualizer shows active slice per step
+- Left stick scrubs slices with instant preview
+- Chromatic pitch shifting on all samples and chops
 
 ### Synthesizers
-- 10 built-in instruments: 808, Kick, Hat, Snare, Clap, Lead, Pluck, Bass, Bell, Zap
-- All synths respond to pitch changes
-- LFO modulation (rate + depth per track)
-- Attack/decay envelope shaping
-- 3 auxiliary layers per track with independent source/pitch/gain
+- 10 built-in engines: 808, Kick, Hat, Snare, Clap, Lead, Pluck, Bass, Bell, Zap
+- All engines respond to pitch, LFO, attack/decay shaping
+- 3 auxiliary layers per track (stack sounds, add sub bass, etc.)
 
 ### Mixer & Effects
-- 3 FX buses (A / B / C) with per-bus effect chains
-- Track-to-bus routing from the step page or mixer view
-- **Drive** — tanh saturation with visual knob
-- **Filter** — biquad lowpass with resonance (stable at all settings)
-- **Bitcrusher** — sample rate reduction + bit depth quantization
-- **Delay** — tempo-synced echo with feedback and wet mix
-- **Reverb** — Schroeder algorithm (4 comb + 2 allpass filters) with damping
-- **Granular** — cloud generator with density, grain size, pitch scatter controls
-- **Grossbeat** — time manipulation (halftime, stutter 1/8, stutter 1/16, reverse, gate)
-- Per-effect toggle, dual-knob control, animated visualizations per effect panel
+Three independent FX buses. Route any track to any bus.
+
+| Effect | What It Does |
+|--------|-------------|
+| **Drive** | Tanh saturation |
+| **Filter** | Biquad lowpass with resonance |
+| **Bitcrusher** | Sample rate + bit depth reduction |
+| **Delay** | Echo with feedback and wet mix |
+| **Reverb** | Schroeder reverb (4 comb + 2 allpass) |
+| **Granular** | Cloud generator — density, grain size, pitch scatter |
+| **Grossbeat** | Time manipulation — halftime, stutter, reverse, gate |
+
+Each effect has animated visualizations and dual-knob control.
 
 ### Performance
-- Pattern chaining: build sequences (1>2>1>3), loop or one-shot
-- 3 playback modes: manual, chain, random
-- Pattern queue (next bar boundary) or instant switch
-- Pattern duplication from perform page
-- BPM control (60-220), swing, master pitch
+- Pattern chaining (build sequences like 1→2→1→3)
+- Three modes: manual, chain, random
+- Queue patterns for next bar or switch instantly
+- Duplicate and remix patterns on the fly
 
-### Song Management
-- Save/load/new/clone with gamepad text input
-- Session persistence (all patterns, tracks, bus FX, settings)
+### Session Management
+- Save / load / clone / rename songs
+- Gamepad text input for naming
 - Auto-save on exit
+- Portable `.bukuloop` session files
 
 ### Themes
-- 4 color themes: Gunmetal, Matrix, Midnight, Ember
-- Theme-aware rendering across all pages
-- Live switching in settings
+Four color themes — Gunmetal, Matrix, Midnight, Ember. Switch live in settings.
 
 ## Controls
+
+Designed for gamepad. Every feature is accessible without a keyboard.
+
+<details>
+<summary><strong>Full control reference</strong></summary>
 
 ### Step Page
 | Input | Action |
 |-------|--------|
-| DPAD Left/Right | Move cursor (enters label area at left edge) |
-| DPAD Up/Down | Switch tracks |
-| A | Toggle step on/off |
-| SEL+A | Toggle accent (roll) |
-| A (on label) | Cycle bus routing: DIR > A > B > C |
-| B | Add new track |
-| SEL+B | Delete current track |
-| X | Open piano roll |
-| Y | Open sample browser |
-| SEL+Y | Open synth lab |
-| L3 (left stick click) | Cycle chop mode |
-| SEL+L3 | Cycle chop mode backward |
-| Left Stick X | Scrub chop slices |
-| R3 (right stick click) | Cycle note randomizer |
-| Right Stick Y | Adjust step probability |
-| Right Stick X | Smooth horizontal scroll |
-| L2/R2 | Cycle track source |
-| L1/R1 | Switch page |
-| START+X | Duplicate/extend pattern |
+| DPAD L/R | Move step cursor |
+| DPAD U/D | Switch tracks |
+| A | Toggle step |
+| SEL+A | Accent (roll) |
+| A on label | Cycle bus: DIR → A → B → C |
+| B / SEL+B | Add / delete track |
+| X | Piano roll |
+| Y | Sample browser |
+| L3 | Cycle chop mode |
+| Left Stick | Scrub chop slices |
+| R3 | Cycle note randomizer |
+| Right Stick Y | Step probability |
+| Right Stick X | Scroll view |
+| L2/R2 | Cycle source |
 
 ### Perform Page
 | Input | Action |
 |-------|--------|
-| DPAD Up/Down | Navigate patterns |
-| A | Queue pattern / Add to chain |
-| X | Switch pattern immediately |
-| B | Cycle mode (manual > chain > random) |
-| Y | New pattern |
-| SEL+Y | Duplicate pattern |
-| SEL+A | Toggle chain loop |
-| SEL+X | Clear chain |
+| A | Queue / chain add |
+| X | Instant switch |
+| B | Cycle mode |
+| Y / SEL+Y | New / duplicate pattern |
 
 ### FX Page
 | Input | Action |
 |-------|--------|
-| DPAD Up/Down | Select track (mixer) or effect (detail) |
-| A | Cycle bus (mixer) / Big nudge (detail) |
-| X | Enter bus detail / Back to mixer |
-| Left/Right | Adjust parameter |
-| SEL+Left/Right | Adjust secondary parameter |
-| SEL+A | Toggle effect on/off / Mute bus |
+| DPAD | Navigate tracks/effects |
+| L/R | Adjust parameter |
+| SEL+L/R | Secondary knob |
+| SEL+A | Toggle effect |
+| X | Mixer ↔ detail |
 | Y | Swap bus |
-| L2/R2 | Fine adjust |
 
 ### Global
 | Input | Action |
 |-------|--------|
-| START | Play/pause (double-tap = rewind) |
-| START+B | Open song/settings menu |
-| L1/R1 (in menu) | Switch to settings |
+| START | Play/pause |
+| START+B | Song menu |
 | START+A | Quick save |
 | SEL+START | Exit |
 
+</details>
+
 ## Building
 
+### Native (Linux / macOS)
 ```bash
-# Native build
-gcc -o bukuloops src/jungledaw.c $(sdl2-config --cflags --libs) -lm -O2
-
-# Deploy to R36S over SSH
-scp bukuloops user@device:/roms/ports/jungledaw/
+make
+# or directly:
+gcc -O2 -o bukuloops jungledaw.c $(sdl2-config --cflags --libs) -lm
 ```
 
-## Sample Packs
+### Web (Emscripten) — coming soon
+```bash
+emcc jungledaw.c -s USE_SDL=2 -O2 -o bukuloops.html
+```
 
-Place `.wav` files in the `samples/` directory next to the binary. Subdirectories become categories in the browser. Supports up to 512 samples. WAV files are converted to 48kHz mono float32 on load (max 6 seconds per sample).
+### Deploy to handheld
+```bash
+scp bukuloops user@device:/roms/ports/bukuloops/
+```
 
-## Session Format
+## Samples
 
-Sessions are saved as `.bukuloop` text files:
-- `[session]` — BPM, pitch, scale, swing, theme
-- `[bus]` — per-bus FX state
-- `[pattern]` + `[track]` — pattern/track data with steps, notes, probability, chop settings
-- `[clip]` / `[beat]` — arrangement data
+Drop `.wav` files into a `samples/` folder next to the binary. Organize into subfolders for automatic categorization in the browser. Supports up to 512 samples (48kHz mono, 6 sec max per file).
 
-## Hardware
+## Technical Details
 
-Built and tested on:
-- **R36S** — RK3326 quad-core ARM Cortex-A35, 1GB RAM, 640x480
-- **dArkOSRE** — Debian-based Linux
-- **Audio** — 48kHz mono, 512-sample buffer
-
-Runs on any Linux/macOS/Windows with SDL2 and a gamepad.
-
-## Architecture
-
-Single-file C (~5000 lines). No dependencies beyond SDL2 and libc/libm.
-
-- 12 polyphonic voices with sample/synth rendering and cut groups
-- 3 FX buses with 7-effect chains (drive, filter, crush, delay, reverb, granular, grossbeat)
-- 16 patterns x 8 tracks x 64 steps
-- Immediate-mode SDL2 rendering with custom bitmap font
-- Real-time audio callback with thread-safe RNG
+- **Language:** C99, single file (~5000 lines)
+- **Dependencies:** SDL2, libc, libm
+- **Audio:** 48kHz mono, 512-sample buffer, real-time callback
+- **Rendering:** Immediate-mode SDL2 rects, custom 5x7 bitmap font
+- **Voices:** 12 polyphonic with cut groups
+- **FX:** 3 buses × 7 effects, biquad filter, Schroeder reverb, granular synthesis
+- **Platform:** Linux (ARM/x86), macOS, Windows, Emscripten (planned)
 
 ## License
 
