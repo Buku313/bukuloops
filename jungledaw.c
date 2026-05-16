@@ -304,6 +304,7 @@ static App app;
 static int select_held = 0;
 static int start_held = 0;
 static int g_run = 1;
+static SDL_Window *g_win = NULL;
 static int g_last_axis_l = 0, g_last_axis_r = 0;
 static int g_last_rstick_y = 0, g_last_lstick_x = 0, g_last_rstick_x = 0;
 static Uint32 g_last_pause_tick = 0;
@@ -4668,6 +4669,7 @@ static void on_button_step(SDL_GameControllerButton b) {
             else {
                 app.browse_open = 1;
                 app.browse_panel = 0;
+                scan_dir_recursive("samples", 0);
                 rebuild_folder_index();
                 Track *bt = cur_track();
                 if (bt) app.browse_idx = track_source_index(bt);
@@ -4939,6 +4941,10 @@ int main(int argc, char **argv) {
             if (app.controller) break;
         }
     }
+    #ifdef __EMSCRIPTEN__
+    mkdir("samples", 0755);
+    mkdir("samples/drops", 0755);
+    #endif
     make_break_sample();
     seed_defaults();
     scan_dir_recursive("samples", 0);
@@ -4958,7 +4964,7 @@ int main(int argc, char **argv) {
     if (!app.dev) fprintf(stderr, "audio failed: %s\n", SDL_GetError());
     else SDL_PauseAudioDevice(app.dev, 0);
 
-    SDL_Window *win = SDL_CreateWindow("BukuLoops",
+    SDL_Window *win = g_win = SDL_CreateWindow("BukuLoops",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H, SDL_WINDOW_SHOWN);
     SDL_Renderer *r = SDL_CreateRenderer(win, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -5119,6 +5125,10 @@ static void main_loop_body(void *arg) {
             }
             else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 int mx = e.button.x, my = e.button.y;
+                /* Scale mouse coords if window is resized */
+                int ww, wh;
+                SDL_GetWindowSize(g_win, &ww, &wh);
+                if (ww > 0 && wh > 0) { mx = mx * W / ww; my = my * H / wh; }
                 /* Tab bar clicks */
                 if (my >= 6 && my <= 32) {
                     int tab_pages[] = {PAGE_STEP, PAGE_PERFORM, PAGE_FX};
@@ -5171,6 +5181,9 @@ static void main_loop_body(void *arg) {
             }
             else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_RIGHT) {
                 int mx = e.button.x, my = e.button.y;
+                int ww, wh;
+                SDL_GetWindowSize(g_win, &ww, &wh);
+                if (ww > 0 && wh > 0) { mx = mx * W / ww; my = my * H / wh; }
                 /* Right click on step = accent */
                 if (app.page == PAGE_STEP && app.pattern_count > 0 && my >= 46 && my < H - 28) {
                     Pattern *mp = &app.patterns[app.step_pat];
