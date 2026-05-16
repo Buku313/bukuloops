@@ -5123,12 +5123,14 @@ static void main_loop_body(void *arg) {
                     default: break;
                 }
             }
-            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                int is_left = (e.button.button == SDL_BUTTON_LEFT || e.button.button == 0);
+                int is_right = (e.button.button == SDL_BUTTON_RIGHT);
                 int mx = e.button.x, my = e.button.y;
-                /* Scale mouse coords if window is resized */
-                int ww, wh;
-                SDL_GetWindowSize(g_win, &ww, &wh);
-                if (ww > 0 && wh > 0) { mx = mx * W / ww; my = my * H / wh; }
+                int ww = W, wh = H;
+                if (g_win) SDL_GetWindowSize(g_win, &ww, &wh);
+                if (ww > 0 && wh > 0 && (ww != W || wh != H)) { mx = mx * W / ww; my = my * H / wh; }
+                if (is_left) {
                 /* Tab bar clicks */
                 if (my >= 6 && my <= 32) {
                     int tab_pages[] = {PAGE_STEP, PAGE_PERFORM, PAGE_FX};
@@ -5178,14 +5180,8 @@ static void main_loop_body(void *arg) {
                 if (mx >= W - 90 && mx <= W - 10 && my >= 8 && my <= 32) {
                     app.playing = !app.playing;
                 }
-            }
-            else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_RIGHT) {
-                int mx = e.button.x, my = e.button.y;
-                int ww, wh;
-                SDL_GetWindowSize(g_win, &ww, &wh);
-                if (ww > 0 && wh > 0) { mx = mx * W / ww; my = my * H / wh; }
-                /* Right click on step = accent */
-                if (app.page == PAGE_STEP && app.pattern_count > 0 && my >= 46 && my < H - 28) {
+                } /* end is_left */
+                if (is_right && app.page == PAGE_STEP && app.pattern_count > 0 && my >= 46 && my < H - 28) {
                     Pattern *mp = &app.patterns[app.step_pat];
                     int m_grid_x = 6 + 110;
                     int m_grid_w = W - 6 - m_grid_x;
